@@ -44,11 +44,11 @@ make
 # verify no external shared library links
 libcheck fio
 # copy fio binary to mounted dir
-cp fio /io/fio_$ARCH
+cp fio "/io/fio_$ARCH"
 
 # download and compile iperf
 cd ~
-curl -L https://github.com/esnet/iperf/archive/3.15.tar.gz -o "iperf.tar.gz"
+curl -L https://github.com/esnet/iperf/archive/3.16.tar.gz -o "iperf.tar.gz"
 tar xf iperf.tar.gz
 cd iperf*
 ./configure --disable-shared --disable-profiling
@@ -57,4 +57,4 @@ make
 # verify no external shared library links
 libcheck src/iperf3
 # copy iperf binary to mounted dir
-cp src/iperf3 /io/iperf3_$ARCH
+cp src/iperf3 "/io/iperf3_$ARCH"
