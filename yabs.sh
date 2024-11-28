@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Yet Another Bench Script by Mason Rowe
-# Initial Oct 2019; Last update Nov 2023
+# Initial Oct 2019; Last update Jun 2024
 
 # Disclaimer: This project is a work in progress. Any errors or suggestions should be
 #             relayed to me via the GitHub project page linked below.
@@ -12,7 +12,7 @@
 #             performance via fio. The script is designed to not require any dependencies
 #             - either compiled or installed - nor admin privileges to run.
 
-YABS_VERSION="v2023-11-30"
+YABS_VERSION="v2024-06-09"
 
 echo -e '# ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## #'
 echo -e '#              Yet-Another-Bench-Script              #'
@@ -214,13 +214,15 @@ echo -e "Basic System Information:"
 echo -e "---------------------------------"
 UPTIME=$(uptime | awk -F'( |,|:)+' '{d=h=m=0; if ($7=="min") m=$6; else {if ($7~/^day/) {d=$6;h=$8;m=$9} else {h=$6;m=$7}}} {print d+0,"days,",h+0,"hours,",m+0,"minutes"}')
 echo -e "Uptime     : $UPTIME"
-if [[ $ARCH = *aarch64* || $ARCH = *arm* ]]; then
+# check for local lscpu installs
+command -v lscpu >/dev/null 2>&1 && LOCAL_LSCPU=true || unset LOCAL_LSCPU
+if [[ $ARCH = *aarch64* || $ARCH = *arm* ]] && [[ ! -z $LOCAL_LSCPU ]]; then
 	CPU_PROC=$(lscpu | grep "Model name" | sed 's/Model name: *//g')
 else
 	CPU_PROC=$(awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo | sed 's/^[ \t]*//;s/[ \t]*$//')
 fi
 echo -e "Processor  : $CPU_PROC"
-if [[ $ARCH = *aarch64* || $ARCH = *arm* ]]; then
+if [[ $ARCH = *aarch64* || $ARCH = *arm* ]] && [[ ! -z $LOCAL_LSCPU ]]; then
 	CPU_CORES=$(lscpu | grep "^[[:blank:]]*CPU(s):" | sed 's/CPU(s): *//g')
 	CPU_FREQ=$(lscpu | grep "CPU max MHz" | sed 's/CPU max MHz: *//g')
 	[[ -z "$CPU_FREQ" ]] && CPU_FREQ="???"
@@ -533,7 +535,7 @@ elif [ -z "$SKIP_FIO" ]; then
 		free_space=$(df -Th | grep -w $long | grep -i zfs | awk '{print $5}' | head -c -2)
 
 		if [[ $size_b == 'T' ]]; then
-			free_space=$((free_space * 1024))
+			free_space=$(awk "BEGIN {print int($free_space * 1024)}")
 			size_b='G'
 		fi
 
@@ -805,13 +807,14 @@ if [ -z "$SKIP_IPERF" ]; then
 	#   5. network modes supported by the iperf server (IPv4 = IPv4-only, IPv4|IPv6 = IPv4 + IPv6, etc.)
 	IPERF_LOCS=( \
 		"lon.speedtest.clouvider.net" "5200-5209" "Clouvider" "London, UK (10G)" "IPv4|IPv6" \
-		"ping.online.net" "5200-5209" "Scaleway" "Paris, FR (10G)" "IPv4" \
-		"ping6.online.net" "5200-5209" "Scaleway" "Paris, FR (10G)" "IPv6" \
-		"speedtest.novoserve.com" "5201-5206" "NovoServe" "North Holland, NL (40G)" "IPv4|IPv6" \
-		"speedtest.uztelecom.uz" "5200-5207" "Uztelecom" "Tashkent, UZ (10G)" "IPv4|IPv6" \
-		"nyc.speedtest.clouvider.net" "5200-5209" "Clouvider" "NYC, NY, US (10G)" "IPv4|IPv6" \
-		"dal.speedtest.clouvider.net" "5200-5209" "Clouvider" "Dallas, TX, US (10G)" "IPv4|IPv6" \
-		"la.speedtest.clouvider.net" "5200-5209" "Clouvider" "Los Angeles, CA, US (10G)" "IPv4|IPv6"
+		"iperf-ams-nl.eranium.net" "5201-5210" "Eranium" "Amsterdam, NL (100G)" "IPv4|IPv6" \
+		#"speedtest.extra.telia.fi" "5201-5208" "Telia" "Helsinki, FI (10G)" "IPv4" \
+		# AFR placeholder
+		"speedtest.uztelecom.uz" "5200-5209" "Uztelecom" "Tashkent, UZ (10G)" "IPv4|IPv6" \
+		"speedtest.sin1.sg.leaseweb.net" "5201-5210" "Leaseweb" "Singapore, SG (10G)" "IPv4|IPv6" \
+		"la.speedtest.clouvider.net" "5200-5209" "Clouvider" "Los Angeles, CA, US (10G)" "IPv4|IPv6" \
+		"speedtest.nyc1.us.leaseweb.net" "5201-5210" "Leaseweb" "NYC, NY, US (10G)" "IPv4|IPv6" \
+		"speedtest.sao1.edgoo.net" "9204-9240" "Edgoo" "Sao Paulo, BR (1G)" "IPv4|IPv6"
 	)
 
 	# if the "REDUCE_NET" flag is activated, then do a shorter iperf test with only three locations
@@ -819,9 +822,8 @@ if [ -z "$SKIP_IPERF" ]; then
 	if [ ! -z "$REDUCE_NET" ]; then
 		IPERF_LOCS=( \
 			"lon.speedtest.clouvider.net" "5200-5209" "Clouvider" "London, UK (10G)" "IPv4|IPv6" \
-			"ping.online.net" "5200-5209" "Scaleway" "Paris, FR (10G)" "IPv4" \
-			"ping6.online.net" "5200-5209" "Scaleway" "Paris, FR (10G)" "IPv6" \
-			"nyc.speedtest.clouvider.net" "5200-5209" "Clouvider" "NYC, NY, US (10G)" "IPv4|IPv6" \
+			"speedtest.sin1.sg.leaseweb.net" "5201-5210" "Leaseweb" "Singapore, SG (10G)" "IPv4|IPv6" \
+			"speedtest.nyc1.us.leaseweb.net" "5201-5210" "Leaseweb" "NYC, NY, US (10G)" "IPv4|IPv6" \
 		)
 	fi
 	
@@ -877,8 +879,8 @@ function launch_geekbench {
 					|| GB_URL="https://cdn.geekbench.com/Geekbench-5.5.1-Linux.tar.gz"
 				GB_CMD="geekbench5"
 			else # Geekbench v6
-				[[ $ARCH = *aarch64* || $ARCH = *arm* ]] && GB_URL="https://cdn.geekbench.com/Geekbench-6.2.2-LinuxARMPreview.tar.gz" \
-					|| GB_URL="https://cdn.geekbench.com/Geekbench-6.2.2-Linux.tar.gz"
+				[[ $ARCH = *aarch64* || $ARCH = *arm* ]] && GB_URL="https://cdn.geekbench.com/Geekbench-6.3.0-LinuxARMPreview.tar.gz" \
+					|| GB_URL="https://cdn.geekbench.com/Geekbench-6.3.0-Linux.tar.gz"
 				GB_CMD="geekbench6"
 			fi
 			GB_RUN="True"
@@ -904,6 +906,10 @@ function launch_geekbench {
 
 		# ensure the test ran successfully
 		if [ -z "$GEEKBENCH_TEST" ]; then
+			# detect if CentOS 7 and print a more helpful error message
+			if grep -q "CentOS Linux 7" /etc/os-release; then
+				echo -e "\r\033[0K CentOS 7 and Geekbench have known issues relating to glibc (see issue #71 for details)"
+			fi
 			if [[ -z "$IPV4_CHECK" ]]; then
 				# Geekbench test failed to download because host lacks IPv4 (cdn.geekbench.com = IPv4 only)
 				echo -e "\r\033[0KGeekbench releases can only be downloaded over IPv4. FTP the Geekbench files and run manually."
